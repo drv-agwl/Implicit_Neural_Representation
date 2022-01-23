@@ -15,6 +15,7 @@ from model.sample import Sampler
 from model.network import gradient
 from scipy.spatial import cKDTree
 from utils.plots import plot_surface, plot_cuts
+import open3d as o3d
 
 
 class ReconstructionRunner:
@@ -177,17 +178,27 @@ class ReconstructionRunner:
         utils.mkdir_ifnotexists(utils.concat_home_dir(os.path.join(self.home_dir, self.exps_folder_name)))
 
         self.input_file = self.conf.get_string('train.input_path')
-        self.data = utils.load_point_cloud_by_file_extension(self.input_file)
+        self.data = utils.load_point_cloud_by_file_extension(self.input_file, normalize=True, visualize_pointset=False)
 
-        sigma_set = []
-        ptree = cKDTree(self.data)
+        point_set = o3d.utility.Vector3dVector(np.array(self.data))
+        axisAlignedBox = o3d.geometry.AxisAlignedBoundingBox().create_from_points(point_set)
+        self.omega = axisAlignedBox.scale(float(self.conf.get_string('train.bbox_scale')),
+                                          axisAlignedBox.get_center())  # construct the omega points set
 
-        for p in np.array_split(self.data, 100, axis=0):
-            d = ptree.query(p, 50 + 1)
-            sigma_set.append(d[0][:, -1])
+        # visualization - uncomment next 3 lines to visualize the pcd and bbox
+        # pcd = o3d.geometry.PointCloud()
+        # pcd.points = point_set
+        # o3d.visualization.draw_geometries([pcd, axisAlignedBox], window_name="test")
 
-        sigmas = np.concatenate(sigma_set)
-        self.local_sigma = torch.from_numpy(sigmas).float().cuda()
+        # sigma_set = []
+        # ptree = cKDTree(self.data)
+        #
+        # for p in np.array_split(self.data, 100, axis=0):
+        #     d = ptree.query(p, 50 + 1)
+        #     sigma_set.append(d[0][:, -1])
+        #
+        # sigmas = np.concatenate(sigma_set)
+        # self.local_sigma = torch.from_numpy(sigmas).float().cuda()
 
         self.expdir = utils.concat_home_dir(os.path.join(self.home_dir, self.exps_folder_name, self.expname))
         utils.mkdir_ifnotexists(self.expdir)

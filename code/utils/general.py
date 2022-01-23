@@ -3,6 +3,8 @@ import os
 import numpy as np
 import torch
 import trimesh
+import open3d as o3d
+import random
 
 
 def mkdir_ifnotexists(directory):
@@ -23,15 +25,15 @@ def as_mesh(scene_or_mesh):
             # we lose texture information here
             mesh = trimesh.util.concatenate(
                 tuple(trimesh.Trimesh(vertices=g.vertices, faces=g.faces)
-                    for g in scene_or_mesh.geometry.values()))
+                      for g in scene_or_mesh.geometry.values()))
     else:
-        assert(isinstance(scene_or_mesh, trimesh.Trimesh))
+        assert (isinstance(scene_or_mesh, trimesh.Trimesh))
         mesh = scene_or_mesh
     return mesh
 
 
 def concat_home_dir(path):
-    return os.path.join(os.environ['HOME'],'data',path)
+    return os.path.join(os.environ['HOME'], 'data', path)
 
 
 def get_class(kls):
@@ -50,16 +52,41 @@ def to_cuda(torch_obj):
         return torch_obj
 
 
-def load_point_cloud_by_file_extension(file_name):
+def sample_from_omega(bbox, num_points):
+    box_points = np.asarray(bbox.get_box_points())
 
+    min_x, max_x = np.min(box_points[:, 0], axis=0), np.max(box_points[:, 0], axis=0)
+    min_y, max_y = np.min(box_points[:, 1], axis=0), np.max(box_points[:, 1], axis=0)
+    min_z, max_z = np.min(box_points[:, 2], axis=0), np.max(box_points[:, 2], axis=0)
+
+    sample = [np.array([random.uniform(min_x, max_x), random.uniform(min_y, max_y),
+                        random.uniform(min_z, max_z)]) for i in range(num_points)]
+
+    return sample
+
+
+def visualize_pcd(point_set):
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(point_set)
+    o3d.visualization.draw_geometries([pcd], window_name="test")
+
+
+def load_point_cloud_by_file_extension(file_name, normalize=False, visualize_pointset=True):
     ext = file_name.split('.')[-1]
 
     if ext == "npz" or ext == "npy":
-        point_set = torch.tensor(np.load(file_name)).float()
+        point_set = np.load(file_name)
     else:
-        point_set = torch.tensor(trimesh.load(file_name, ext).vertices).float()
+        point_set = np.asarray(trimesh.load(file_name, ext).vertices)
 
-    return point_set
+    if normalize:
+        max_norm = max(np.linalg.norm(point_set, axis=1))
+        point_set /= max_norm
+
+    if visualize_pointset:
+        visualize_pcd(point_set)
+
+    return torch.tensor(point_set).float()
 
 
 class LearningRateSchedule:

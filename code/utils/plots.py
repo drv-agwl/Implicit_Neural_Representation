@@ -66,7 +66,7 @@ def plot_surface(decoder, path, epoch, shapename, resolution, mc_value, is_unifo
                  overwrite, points=None, with_points=False, latent=None, connected=False):
     filename = '{0}/igr_{1}_{2}'.format(path, epoch, shapename)
 
-    if (not os.path.exists(filename) or overwrite):
+    if not os.path.exists(filename) or overwrite:
 
         if with_points:
             pnts_val = decoder(points)
@@ -100,7 +100,7 @@ def get_surface_trace(points, decoder, latent, resolution, mc_value, is_uniform,
     trace = []
     meshexport = None
 
-    if (is_uniform):
+    if is_uniform:
         grid = get_grid_uniform(resolution)
     else:
         if not points is None:
@@ -113,16 +113,16 @@ def get_surface_trace(points, decoder, latent, resolution, mc_value, is_uniform,
     total_iters = len(torch.split(grid['grid_points'], 100000, dim=0))
     pbar = tqdm(total=total_iters)
     for i, pnts in enumerate(torch.split(grid['grid_points'], 100000, dim=0)):
-        if (verbose):
+        if verbose:
             print('{0}'.format(i / (grid['grid_points'].shape[0] // 100000) * 100))
 
-        if (not latent is None):
+        if not latent is None:
             pnts = torch.cat([latent.expand(pnts.shape[0], -1), pnts], dim=1)
         z.append(decoder(pnts).detach().cpu().numpy())
         pbar.update(1)
     z = np.concatenate(z, axis=0)
 
-    if (not (np.min(z) > mc_value or np.max(z) < mc_value)):
+    if not (np.min(z) > mc_value or np.max(z) < mc_value):
 
         import trimesh
         z = z.astype(np.float64)
@@ -136,7 +136,7 @@ def get_surface_trace(points, decoder, latent, resolution, mc_value, is_uniform,
                      grid['xyz'][0][2] - grid['xyz'][0][1]))
 
         verts = verts + np.array([grid['xyz'][0][0], grid['xyz'][1][0], grid['xyz'][2][0]])
-        if (save_ply):
+        if save_ply:
             meshexport = trimesh.Trimesh(verts, faces, normals, vertex_colors=values)
             if connected:
                 connected_comp = meshexport.split(only_watertight=False)
