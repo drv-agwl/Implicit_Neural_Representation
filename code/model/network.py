@@ -39,23 +39,25 @@ class FourierLayer(nn.Module):
 class ImplicitNet(nn.Module):
     def __init__(
             self,
+            FF,
+            k,
             d_in,
             dims,
             skip_in=(),
             geometric_init=True,
             radius_init=1,
-            beta=100,
-            FF=False
+            beta=100
     ):
         super().__init__()
 
         self.FF = FF
+        self.k = k
 
-        if not FF:
-            d_in = 2 * dims[0]  # 2x hidden layer size ([sin_term, cos_term])
-            self.ffLayer = FourierLayer(in_features=3, out_features=d_in)
-
-        dims = [d_in] + dims + [1]
+        if FF:
+            self.ffLayer = FourierLayer(in_features=3, out_features=dims[0]//2, k=self.k)
+            dims = [dims[0]] + dims + [1]
+        else:
+            dims = [d_in] + dims + [1]
 
         self.num_layers = len(dims)
         self.skip_in = skip_in
@@ -94,7 +96,7 @@ class ImplicitNet(nn.Module):
 
         x = input
 
-        if not self.FF:
+        if self.FF:
             x = self.ffLayer(x)  # apply the fourier
 
         for layer in range(0, self.num_layers - 1):

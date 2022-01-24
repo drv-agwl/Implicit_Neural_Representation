@@ -242,9 +242,12 @@ class ReconstructionRunner:
         # use normals if data has  normals and normals_lambda is positive
         self.with_normals = self.conf.get_bool('network.with_normals') and self.data.shape[-1] >= 6
 
+        self.FF = self.conf.get_bool('network.with_fourier_layer')
+        self.k = self.conf.get_float('network.fourier_scale')
+
         self.d_in = self.conf.get_int('train.d_in')
 
-        self.network = utils.get_class(self.conf.get_string('train.network_class'))(d_in=self.d_in,
+        self.network = utils.get_class(self.conf.get_string('train.network_class'))(self.FF, self.k, d_in=self.d_in,
                                                                                     **self.conf.get_config(
                                                                                         'network.inputs'))
         self.w_function = doubleWellPotential
