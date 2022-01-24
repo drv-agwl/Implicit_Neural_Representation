@@ -16,15 +16,22 @@ def gradient(inputs, outputs):
     return points_grad
 
 
+def doubleWellPotential(s):
+    """
+    double well potential function with zeros at -1 and 1
+    """
+    return (s ** 2) - 2 * (s.abs()) + 1.
+
+
 class ImplicitNet(nn.Module):
     def __init__(
-        self,
-        d_in,
-        dims,
-        skip_in=(),
-        geometric_init=True,
-        radius_init=1,
-        beta=100
+            self,
+            d_in,
+            dims,
+            skip_in=(),
+            geometric_init=True,
+            radius_init=1,
+            beta=100
     ):
         super().__init__()
 

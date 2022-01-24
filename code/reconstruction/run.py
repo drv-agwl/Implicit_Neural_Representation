@@ -16,6 +16,7 @@ from model.network import gradient
 from scipy.spatial import cKDTree
 from utils.plots import plot_surface, plot_cuts
 import open3d as o3d
+from model.network import doubleWellPotential
 
 
 class ReconstructionRunner:
@@ -43,9 +44,11 @@ class ReconstructionRunner:
             indices = torch.tensor(np.random.choice(self.data.shape[0], self.points_batch, False))
 
             cur_data = self.data[indices]
-
-            mnfld_pnts = cur_data[:, :self.d_in]
-            mnfld_sigma = self.local_sigma[indices]
+            cur_balls = torch.tensor(self.balls[indices]).float().cuda()
+            ball_data_shape = cur_balls.shape
+            omega_points = utils.sample_from_omega(self.omega,
+                                                   self.points_batch * ball_data_shape[1]).cuda().requires_grad_()
+            ball_points = cur_balls.reshape(-1, cur_balls.shape[-1])  # fetch nearby points of balls centered at X
 
             if epoch % self.conf.get_int('train.checkpoint_frequency') == 0:
                 print('saving checkpoint: ', epoch)
@@ -57,36 +60,32 @@ class ReconstructionRunner:
             self.network.train()
             self.adjust_learning_rate(epoch)
 
-            nonmnfld_pnts = self.sampler.get_points(mnfld_pnts.unsqueeze(0), mnfld_sigma.unsqueeze(0)).squeeze()
+            # Calculate reconstruction loss: L(u)
+            pred_reconst = self.network(ball_points)
+            pred_reconst = pred_reconst.reshape(
+                (ball_data_shape[0], ball_data_shape[1]))  # (num_points, n_per_ball, d_in)
+            n_per_ball = pred_reconst.shape[1]
+            reconst_loss = (pred_reconst.sum(axis=1) / n_per_ball).abs().mean()
 
-            # forward pass
+            # Calculate WCH Loss
+            pred_wch = self.network(omega_points)
+            grad = gradient(omega_points, pred_wch)
+            W_u = self.w_function(pred_wch.reshape(-1))  # output of double well function: W(u)
+            WCH_loss = (self.epsilon * grad.norm(2, dim=-1) ** 2 + W_u).mean(dim=0)
 
-            mnfld_pred = self.network(mnfld_pnts)
-            nonmnfld_pred = self.network(nonmnfld_pnts)
+            loss = self.lmbda * reconst_loss + WCH_loss
 
-            # compute grad
-
-            mnfld_grad = gradient(mnfld_pnts, mnfld_pred)
-            nonmnfld_grad = gradient(nonmnfld_pnts, nonmnfld_pred)
-
-            # manifold loss
-
-            mnfld_loss = (mnfld_pred.abs()).mean()
-
-            # eikonal loss
-
-            grad_loss = ((nonmnfld_grad.norm(2, dim=-1) - 1) ** 2).mean()
-
-            loss = mnfld_loss + self.grad_lambda * grad_loss
-
-            # normals loss
-
+            # Calculate normals loss
+            u_x = self.network(cur_data[:, :self.d_in]).reshape(-1, 1)
+            del_w_x = (self.epsilon ** 0.5) * u_x
             if self.with_normals:
                 normals = cur_data[:, -self.d_in:]
-                normals_loss = ((mnfld_grad - normals).abs()).norm(2, dim=1).mean()
-                loss = loss + self.normals_lambda * normals_loss
+                normals_loss = (normals - del_w_x).norm(1, dim=1).mean()
             else:
-                normals_loss = torch.zeros(1)
+                normals_loss = (1. - del_w_x.norm(2, dim=1)).norm(2, dim=1).mean()
+
+            loss = loss + self.mu * normals_loss * 0  # multiplying with zero to neglect the normal loss (as per paper,
+                                                      # they didn't publish their results using normal loss)
 
             # back propagation
 
@@ -97,10 +96,10 @@ class ReconstructionRunner:
             self.optimizer.step()
 
             if epoch % self.conf.get_int('train.status_frequency') == 0:
-                print('Train Epoch: [{}/{} ({:.0f}%)]\tTrain Loss: {:.6f}\tManifold loss: {:.6f}'
-                      '\tGrad loss: {:.6f}\tNormals Loss: {:.6f}'.format(
+                print('Train Epoch: [{}/{} ({:.0f}%)]\tTrain Loss: {:.6f}\treconstruction loss: {:.6f}'
+                      '\tWCH loss: {:.6f}\tNormals Loss: {:.6f}'.format(
                     epoch, self.nepochs, 100. * epoch / self.nepochs,
-                    loss.item(), mnfld_loss.item(), grad_loss.item(), normals_loss.item()))
+                    loss.item(), reconst_loss.item(), WCH_loss.item(), normals_loss.item()))
 
     def plot_shapes(self, epoch, path=None, with_cuts=False):
         # plot network validation shapes
@@ -179,10 +178,13 @@ class ReconstructionRunner:
 
         self.input_file = self.conf.get_string('train.input_path')
         self.data = utils.load_point_cloud_by_file_extension(self.input_file, normalize=True, visualize_pointset=False)
+        self.balls = np.asarray([utils.sample_ball_points(point, self.conf.get_float('train.ball_sigma'),
+                                                          n_per_ball=100)
+                                 for point in np.array(self.data)])
 
         point_set = o3d.utility.Vector3dVector(np.array(self.data))
         axisAlignedBox = o3d.geometry.AxisAlignedBoundingBox().create_from_points(point_set)
-        self.omega = axisAlignedBox.scale(float(self.conf.get_string('train.bbox_scale')),
+        self.omega = axisAlignedBox.scale(self.conf.get_float('train.bbox_scale'),
                                           axisAlignedBox.get_center())  # construct the omega points set
 
         # visualization - uncomment next 3 lines to visualize the pcd and bbox
@@ -190,15 +192,15 @@ class ReconstructionRunner:
         # pcd.points = point_set
         # o3d.visualization.draw_geometries([pcd, axisAlignedBox], window_name="test")
 
-        # sigma_set = []
-        # ptree = cKDTree(self.data)
-        #
-        # for p in np.array_split(self.data, 100, axis=0):
-        #     d = ptree.query(p, 50 + 1)
-        #     sigma_set.append(d[0][:, -1])
-        #
-        # sigmas = np.concatenate(sigma_set)
-        # self.local_sigma = torch.from_numpy(sigmas).float().cuda()
+        sigma_set = []
+        ptree = cKDTree(self.data)
+
+        for p in np.array_split(self.data, 100, axis=0):
+            d = ptree.query(p, 50 + 1)
+            sigma_set.append(d[0][:, -1])
+
+        sigmas = np.concatenate(sigma_set)
+        self.local_sigma = torch.from_numpy(sigmas).float().cuda()
 
         self.expdir = utils.concat_home_dir(os.path.join(self.home_dir, self.exps_folder_name, self.expname))
         utils.mkdir_ifnotexists(self.expdir)
@@ -233,17 +235,19 @@ class ReconstructionRunner:
         self.global_sigma = self.conf.get_float('network.sampler.properties.global_sigma')
         self.sampler = Sampler.get_sampler(self.conf.get_string('network.sampler.sampler_type'))(self.global_sigma,
                                                                                                  self.local_sigma)
-        self.grad_lambda = self.conf.get_float('network.loss.lambda')
-        self.normals_lambda = self.conf.get_float('network.loss.normals_lambda')
+        self.lmbda = self.conf.get_float('network.loss.lambda')
+        self.mu = self.conf.get_float('network.loss.mu')
+        self.epsilon = self.conf.get_float('network.loss.epsilon')
 
         # use normals if data has  normals and normals_lambda is positive
-        self.with_normals = self.normals_lambda > 0 and self.data.shape[-1] >= 6
+        self.with_normals = self.conf.get_bool('network.with_normals') and self.data.shape[-1] >= 6
 
         self.d_in = self.conf.get_int('train.d_in')
 
         self.network = utils.get_class(self.conf.get_string('train.network_class'))(d_in=self.d_in,
                                                                                     **self.conf.get_config(
                                                                                         'network.inputs'))
+        self.w_function = doubleWellPotential
 
         if torch.cuda.is_available():
             self.network.cuda()
@@ -325,7 +329,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--points_batch', type=int, default=16384, help='point batch size')
-    parser.add_argument('--nepoch', type=int, default=100000, help='number of epochs to train for')
+    parser.add_argument('--nepoch', type=int, default=50000, help='number of epochs to train for')
     parser.add_argument('--conf', type=str, default='setup.conf')
     parser.add_argument('--expname', type=str, default='single_shape')
     parser.add_argument('--gpu', type=str, default='auto', help='GPU to use [default: GPU auto]')

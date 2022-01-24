@@ -52,6 +52,16 @@ def to_cuda(torch_obj):
         return torch_obj
 
 
+def sample_ball_points(point, sigma, n_per_ball=100):
+    """
+    1. draw small radius ball near the input point
+    2. uniformly sample n_per_ball balls
+    """
+
+    ball_points = np.random.normal(point, sigma, size=(n_per_ball, point.shape[0]))
+    return ball_points
+
+
 def sample_from_omega(bbox, num_points):
     box_points = np.asarray(bbox.get_box_points())
 
@@ -62,7 +72,7 @@ def sample_from_omega(bbox, num_points):
     sample = [np.array([random.uniform(min_x, max_x), random.uniform(min_y, max_y),
                         random.uniform(min_z, max_z)]) for i in range(num_points)]
 
-    return sample
+    return torch.Tensor(np.asarray(sample)).float()
 
 
 def visualize_pcd(point_set):

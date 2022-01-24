@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 
 def get_threed_scatter_trace(points, caption=None, colorscale=None, color=None):
-    if (type(points) == list):
+    if type(points) == list:
         trace = [go.Scatter3d(
             x=p[0][:, 0],
             y=p[0][:, 1],
@@ -170,11 +170,11 @@ def plot_cuts_axis(points, decoder, latent, path, epoch, near_zero, axis, file_n
     max_axis = points[:, axis].max(dim=0)[0].item()
     mask = np.zeros(3)
     mask[axis] = 1.0
-    if (axis == 0):
+    if axis == 0:
         position_cut = np.vstack(([np.zeros(xx.shape[0]), xx, yy]))
-    elif (axis == 1):
+    elif axis == 1:
         position_cut = np.vstack(([xx, np.zeros(xx.shape[0]), yy]))
-    elif (axis == 2):
+    elif axis == 2:
         position_cut = np.vstack(([xx, yy, np.zeros(xx.shape[0])]))
     position_cut = [position_cut + i * mask.reshape(-1, 1) for i in np.linspace(min_axis - 0.1, max_axis + 0.1, 50)]
     for index, pos in enumerate(position_cut):
@@ -183,13 +183,13 @@ def plot_cuts_axis(points, decoder, latent, path, epoch, near_zero, axis, file_n
         field_input = utils.to_cuda(torch.tensor(pos.T, dtype=torch.float))
         z = []
         for i, pnts in enumerate(torch.split(field_input, 10000, dim=0)):
-            if (not latent is None):
+            if not latent is None:
                 pnts = torch.cat([latent.expand(pnts.shape[0], -1), pnts], dim=1)
             z.append(decoder(pnts).detach().cpu().numpy())
         z = np.concatenate(z, axis=0)
 
-        if (near_zero):
-            if (np.min(z) < -1.0e-5):
+        if near_zero:
+            if np.min(z) < -1.0e-5:
                 start = -0.1
             else:
                 start = 0.0
@@ -327,9 +327,12 @@ def get_grid(points, resolution):
 
 
 def get_grid_uniform(resolution):
-    x = np.linspace(-1.2, 1.2, resolution)
-    y = x
-    z = x
+    # x = np.linspace(-1.2, 1.2, resolution)
+    # y = x
+    # z = x
+    x = np.linspace(-0.91, 0.91, resolution)
+    y = np.linspace(-0.86, 1.28, resolution)
+    z = np.linspace(-0.68, 0.59, resolution)
 
     xx, yy, zz = np.meshgrid(x, y, z)
     grid_points = utils.to_cuda(torch.tensor(np.vstack([xx.ravel(), yy.ravel(), zz.ravel()]).T, dtype=torch.float))
