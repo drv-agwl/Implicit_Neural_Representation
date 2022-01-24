@@ -2,6 +2,7 @@ import numpy as np
 import torch.nn as nn
 import torch
 from torch.autograd import grad
+from math import pi
 
 
 def gradient(inputs, outputs):
@@ -23,6 +24,18 @@ def doubleWellPotential(s):
     return (s ** 2) - 2 * (s.abs()) + 1.
 
 
+class FourierLayer(nn.Module):
+    def __init__(self, in_features, out_features, k):
+        super().__init__()
+        B = torch.randn(in_features, out_features) * k
+        self.register_buffer("B", B)
+
+    def forward(self, x):
+        x_proj = torch.matmul(2 * pi * x, self.B)
+        out = torch.cat([torch.sin(x_proj), torch.cos(x_proj)], dim=-1)
+        return out
+
+
 class ImplicitNet(nn.Module):
     def __init__(
             self,
@@ -31,9 +44,16 @@ class ImplicitNet(nn.Module):
             skip_in=(),
             geometric_init=True,
             radius_init=1,
-            beta=100
+            beta=100,
+            FF=False
     ):
         super().__init__()
+
+        self.FF = FF
+
+        if not FF:
+            d_in = 2 * dims[0]  # 2x hidden layer size ([sin_term, cos_term])
+            self.ffLayer = FourierLayer(in_features=3, out_features=d_in)
 
         dims = [d_in] + dims + [1]
 
@@ -73,6 +93,9 @@ class ImplicitNet(nn.Module):
     def forward(self, input):
 
         x = input
+
+        if not self.FF:
+            x = self.ffLayer(x)  # apply the fourier
 
         for layer in range(0, self.num_layers - 1):
 

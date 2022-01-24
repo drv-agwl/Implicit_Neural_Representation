@@ -82,7 +82,7 @@ class ReconstructionRunner:
                 normals = cur_data[:, -self.d_in:]
                 normals_loss = (normals - del_w_x).norm(1, dim=1).mean()
             else:
-                normals_loss = (1. - del_w_x.norm(2, dim=1)).norm(2, dim=1).mean()
+                normals_loss = (1. - del_w_x.norm(2, dim=1)).reshape(-1, 1).norm(2, dim=1).mean()
 
             loss = loss + self.mu * normals_loss * 0  # multiplying with zero to neglect the normal loss (as per paper,
                                                       # they didn't publish their results using normal loss)
@@ -179,7 +179,7 @@ class ReconstructionRunner:
         self.input_file = self.conf.get_string('train.input_path')
         self.data = utils.load_point_cloud_by_file_extension(self.input_file, normalize=True, visualize_pointset=False)
         self.balls = np.asarray([utils.sample_ball_points(point, self.conf.get_float('train.ball_sigma'),
-                                                          n_per_ball=100)
+                                                          n_per_ball=50)
                                  for point in np.array(self.data)])
 
         point_set = o3d.utility.Vector3dVector(np.array(self.data))
