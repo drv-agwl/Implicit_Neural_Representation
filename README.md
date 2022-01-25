@@ -133,4 +133,4 @@ If you find our work useful in your research, please consider citing:
 }
     	
 ## Code Reference from
-https://github.com/amosgropp/IGR/tree/master/code
+https://github.com/amosgropp/IGR
