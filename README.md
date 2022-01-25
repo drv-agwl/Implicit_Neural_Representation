@@ -3,17 +3,25 @@
   <img src="IGR.png"/>
 </p>
 
-This repository contains an implementation to the ICML 2020 paper: "Implicit Geometric Regualrization for Learning Shapes".
+This repository contains an implementation to the paper: "Phase transitions distance functions and implicit neural representations".
 
-IGR is a deep learning approach for learning implicit signed distance representations directly from raw point clouds with or without normal data.
-Our method aims to find an SDF by optimizing the network to solve the eikonal equation with the input point cloud as boundary condition.
-Although this is an ill posed condition we enjoy an implicit regualrization coming from the optimization procedure itself which aims our method to simple natrual solutions as can be seen on the figure above.
+Representing surfaces as zero level sets of neural
+networks recently emerged as a powerful modeling paradigm, named Implicit Neural Representations (INRs), serving numerous downstream
+applications in geometric deep learning and 3D vision. Training INRs previously required choosing
+between occupancy and distance function representation and different losses with unknown limit
+behavior and/or bias. In this paper we draw inspiration from the theory of phase transitions of fluids and suggest a loss for training INRs that learns
+a density function that converges to a proper occupancy function, while its log transform converges
+to a distance function. Furthermore, we analyze
+the limit minimizer of this loss showing it satisfies
+the reconstruction constraints and has minimal
+surface perimeter, a desirable inductive bias for
+surface reconstruction. Training INRs with this
+new loss leads to state-of-the-art reconstructions
+on a standard benchmark.
 
 For more details:
 
-paper: https://arxiv.org/abs/2002.10099.
-
-video: https://youtu.be/6cOvBGBQF9g.
+paper: https://arxiv.org/pdf/2106.07689.pdf
 
 
 ## Installation Requirmenets
@@ -115,17 +123,14 @@ python shapespace/train.py
 ## Citation
 If you find our work useful in your research, please consider citing:
 
-    @incollection{icml2020_2086,
-     author = {Gropp, Amos and Yariv, Lior and Haim, Niv and Atzmon, Matan and Lipman, Yaron},
-     booktitle = {Proceedings of Machine Learning and Systems 2020},
-     pages = {3569--3579},
-     title = {Implicit Geometric Regularization for Learning Shapes},
-     year = {2020}
-    }
+    @misc{lipman2021phase,
+      title={Phase Transitions, Distance Functions, and Implicit Neural Representations}, 
+      author={Yaron Lipman},
+      year={2021},
+      eprint={2106.07689},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
     	
-## Related papers
-* [Yariv et al. - Multiview Neural Surface Reconstruction with Implicit Lighting and Material](https://arxiv.org/abs/2003.09852)
-* [Atzmon & Lipman. - SAL++: Sign Agnostic Learning with Derivatives (2020)](https://arxiv.org/abs/2006.05400)
-* [Atzmon & Lipman. - SAL: Sign Agnostic Learning of Shapes From Raw Data (2020)](https://arxiv.org/abs/1911.10414)
-* [Atzmon et al. - Controlling Neural Level Sets (2019)](https://arxiv.org/abs/1905.11911)
-	
+## Code Reference from
+https://github.com/amosgropp/IGR/tree/master/code
