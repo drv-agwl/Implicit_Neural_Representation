@@ -47,10 +47,8 @@ class ReconstructionRunner:
             cur_balls = torch.tensor(self.balls[indices]).float().cuda()
             ball_data_shape = cur_balls.shape
             omega_points = utils.sample_from_omega(self.omega,
-                                                   self.points_batch).cuda().requires_grad_()
-            ball_points = cur_balls.reshape(-1, cur_balls.shape[-1])[
-                np.random.uniform(0, cur_balls.shape[0]*cur_balls.shape[1], self.points_batch)]
-                # fetch nearby points of balls centered at X
+                                                   self.points_batch * ball_data_shape[1]).cuda().requires_grad_()
+            ball_points = cur_balls.reshape(-1, cur_balls.shape[-1])  # fetch nearby points of balls centered at X
 
             if epoch % self.conf.get_int('train.checkpoint_frequency') == 0:
                 print('saving checkpoint: ', epoch)
