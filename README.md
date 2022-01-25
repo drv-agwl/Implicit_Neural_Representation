@@ -1,4 +1,4 @@
-# IGR: Implicit Geometric Regularization for Learning Shapes
+# IGR: Implicit Geometric Regularization for Learning Shapes with Phase Loss and Fourier Layer
 <p align="center">
   <img src="IGR.png"/>
 </p>
