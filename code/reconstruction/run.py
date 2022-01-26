@@ -177,7 +177,7 @@ class ReconstructionRunner:
         utils.mkdir_ifnotexists(utils.concat_home_dir(os.path.join(self.home_dir, self.exps_folder_name)))
 
         self.input_file = self.conf.get_string('train.input_path')
-        self.data = utils.load_point_cloud_by_file_extension(self.input_file, normalize=True, visualize_pointset=False)
+        self.data = utils.load_point_cloud_by_file_extension(self.input_file, normalize=False, visualize_pointset=False)
         self.balls = np.asarray([utils.sample_ball_points(point, self.conf.get_float('train.ball_sigma'),
                                                           n_per_ball=50)
                                  for point in np.array(self.data)])

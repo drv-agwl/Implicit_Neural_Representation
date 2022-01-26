@@ -330,9 +330,9 @@ def get_grid_uniform(resolution):
     # x = np.linspace(-1.2, 1.2, resolution)
     # y = x
     # z = x
-    x = np.linspace(-0.91, 0.91, resolution)
-    y = np.linspace(-0.86, 1.28, resolution)
-    z = np.linspace(-0.68, 0.59, resolution)
+    x = np.linspace(-1.91, 1.91, resolution)
+    y = np.linspace(-1.81, 2.70, resolution)
+    z = np.linspace(-1.43, 1.23, resolution)
 
     xx, yy, zz = np.meshgrid(x, y, z)
     grid_points = utils.to_cuda(torch.tensor(np.vstack([xx.ravel(), yy.ravel(), zz.ravel()]).T, dtype=torch.float))
