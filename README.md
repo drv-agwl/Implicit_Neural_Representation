@@ -3,7 +3,7 @@
   <img src="IGR.png"/>
 </p>
 
-This repository contains an implementation to the paper: "Phase transitions distance functions and implicit neural representations".
+This repository contains an unofficial implementation to the paper: "Phase transitions distance functions and implicit neural representations".
 
 Representing surfaces as zero level sets of neural
 networks recently emerged as a powerful modeling paradigm, named Implicit Neural Representations (INRs), serving numerous downstream
