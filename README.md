@@ -36,7 +36,7 @@ numpy, pyhocon, plotly, scikit-image, trimesh.
   <img src="recon3D.png"/>
 </p>
 
-IGR can be used to reconstruct a single surface given a point cloud with or without normal data. Adjust reconstruction/setup.json to the
+IGR can be used to reconstruct a single surface given a point cloud with or without normal data and with or without adding fourier layer to the network. Adjust reconstruction/setup.json to the
 path of the input 2D/3D point cloud:
 ```
 train
@@ -46,6 +46,13 @@ train
   ...
   input_path = your_path
   ...
+}
+network
+{
+  ...
+  with_normals = True/False
+  with_fourier_layer = True/False
+  fourier_scale = scale parameter for fourier layer
 }
 ```
 Where D=3 in case we use 3D data or 2 if we use 2D. We support xyz,npy,npz,ply files.
